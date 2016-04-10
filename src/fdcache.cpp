@@ -45,6 +45,7 @@
 #include "s3fs_util.h"
 #include "string_util.h"
 #include "curl.h"
+#include "rc4.h"
 #include <openssl/rc4.h>
 
 using namespace std;
@@ -1053,8 +1054,8 @@ int FdEntity::Load(off_t start, size_t size)
 
   // initializing key for encryption
   std::string passphrase;
-  passphrase = s3fscurl::GetRC4PassPhrase();
-  RC4::s3sf_init_key((unsigned char *) passphrase.c_str());
+  passphrase = S3fsCurl::GetRC4PassPhrase();
+  RC4Encryption::s3fs_init_key((unsigned char *) passphrase.c_str());
 
   // check loaded area & load
   fdpage_list_t unloaded_list;
@@ -1107,7 +1108,7 @@ int FdEntity::Load(off_t start, size_t size)
         is_modify = false;
       }
 
-      RC4::s3fs_decrypt_rc4(fd);
+      RC4Encryption::s3fs_decrypt_rc4(fd);
 
       // Set loaded flag
       pagelist.SetPageLoadedStatus((*iter)->offset, static_cast<off_t>((*iter)->bytes), true);
@@ -1362,7 +1363,7 @@ int FdEntity::RowFlush(const char* tpath, bool force_sync)
     return 0;
   }
 
-  RC4::s3fs_encrypt_rc4(fd);
+  RC4Encryption::s3fs_encrypt_rc4(fd);
 
   // If there is no loading all of the area, loading all area.
   size_t restsize = pagelist.GetTotalUnloadedPageSize();
@@ -1432,7 +1433,7 @@ int FdEntity::RowFlush(const char* tpath, bool force_sync)
       result = s3fscurl.PutRequest(tpath ? tpath : path.c_str(), orgmeta, fd);
     }
 
-    RC4::s3fs_decrypt_rc4(fd);
+    RC4Encryption::s3fs_decrypt_rc4(fd);
 
     // seek to head of file.
     if(0 == result && 0 != lseek(fd, 0, SEEK_SET)){

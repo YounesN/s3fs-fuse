@@ -271,6 +271,7 @@ mimes_t          S3fsCurl::mimeTypes;
 int              S3fsCurl::max_parallel_cnt    = 5;              // default
 off_t            S3fsCurl::multipart_size      = MULTIPART_SIZE; // default
 bool             S3fsCurl::is_sigv4            = true;           // default
+std::string      S3fsCurl::rc4_passphrase      = "";             // default
 
 //-------------------------------------------------------------------
 // Class methods for S3fsCurl
@@ -565,7 +566,7 @@ string S3fsCurl::LookupMimeType(const string& name)
   }
 
   // neither the last extension nor the second-to-last extension
-  // matched a mimeType, return the default mime type 
+  // matched a mimeType, return the default mime type
   return result;
 }
 
@@ -574,7 +575,7 @@ bool S3fsCurl::LocateBundle(void)
   // See if environment variable CURL_CA_BUNDLE is set
   // if so, check it, if it is a good path, then set the
   // curl_ca_bundle variable to it
-  char *CURL_CA_BUNDLE; 
+  char *CURL_CA_BUNDLE;
 
   if(0 == S3fsCurl::curl_ca_bundle.size()){
     CURL_CA_BUNDLE = getenv("CURL_CA_BUNDLE");
@@ -586,7 +587,7 @@ bool S3fsCurl::LocateBundle(void)
         return false;
       }
       BF.close();
-      S3fsCurl::curl_ca_bundle.assign(CURL_CA_BUNDLE); 
+      S3fsCurl::curl_ca_bundle.assign(CURL_CA_BUNDLE);
       return true;
     }
   }
@@ -607,10 +608,10 @@ bool S3fsCurl::LocateBundle(void)
   // dnl /usr/local/share/certs/ca-root.crt FreeBSD
   // dnl /etc/ssl/cert.pem OpenBSD
   // dnl /etc/ssl/certs/ (ca path) SUSE
-  ifstream BF("/etc/pki/tls/certs/ca-bundle.crt"); 
+  ifstream BF("/etc/pki/tls/certs/ca-bundle.crt");
   if(BF.good()){
      BF.close();
-     S3fsCurl::curl_ca_bundle.assign("/etc/pki/tls/certs/ca-bundle.crt"); 
+     S3fsCurl::curl_ca_bundle.assign("/etc/pki/tls/certs/ca-bundle.crt");
   }else{
     S3FS_PRN_ERR("%s: /etc/pki/tls/certs/ca-bundle.crt is not readable", program_name.c_str());
     return false;
@@ -883,7 +884,7 @@ bool S3fsCurl::SetSseKmsid(const char* kmsid)
 }
 
 // [NOTE]
-// Because SSE is set by some options and environment, 
+// Because SSE is set by some options and environment,
 // this function check the integrity of the SSE data finally.
 bool S3fsCurl::FinalCheckSse(void)
 {
@@ -912,7 +913,7 @@ bool S3fsCurl::FinalCheckSse(void)
   }
   return true;
 }
-                                                                                                                                                   
+
 bool S3fsCurl::LoadEnvSseCKeys(void)
 {
   char* envkeys = getenv("AWSSSECKEYS");
@@ -1382,7 +1383,7 @@ int S3fsCurl::CurlDebugFunc(CURL* hcurl, curl_infotype type, char* data, size_t 
 //-------------------------------------------------------------------
 // Methods for S3fsCurl
 //-------------------------------------------------------------------
-S3fsCurl::S3fsCurl(bool ahbe) : 
+S3fsCurl::S3fsCurl(bool ahbe) :
     hCurl(NULL), path(""), base_path(""), saved_path(""), url(""), requestHeaders(NULL),
     bodydata(NULL), headdata(NULL), LastResponseCode(-1), postdata(NULL), postdata_remaining(0), is_use_ahbe(ahbe),
     retry_count(0), b_infile(NULL), b_postdata(NULL), b_postdata_remaining(0), b_partdata_startpos(0), b_partdata_size(0),
@@ -1756,7 +1757,7 @@ int S3fsCurl::RequestPerform(void)
         if(500 <= LastResponseCode){
           S3FS_PRN_INFO3("HTTP response code %ld", LastResponseCode);
           sleep(4);
-          break; 
+          break;
         }
 
         // Service response codes which are >= 400 && < 500
@@ -1786,38 +1787,38 @@ int S3fsCurl::RequestPerform(void)
       case CURLE_WRITE_ERROR:
         S3FS_PRN_ERR("### CURLE_WRITE_ERROR");
         sleep(2);
-        break; 
+        break;
 
       case CURLE_OPERATION_TIMEDOUT:
         S3FS_PRN_ERR("### CURLE_OPERATION_TIMEDOUT");
         sleep(2);
-        break; 
+        break;
 
       case CURLE_COULDNT_RESOLVE_HOST:
         S3FS_PRN_ERR("### CURLE_COULDNT_RESOLVE_HOST");
         sleep(2);
-        break; 
+        break;
 
       case CURLE_COULDNT_CONNECT:
         S3FS_PRN_ERR("### CURLE_COULDNT_CONNECT");
         sleep(4);
-        break; 
+        break;
 
       case CURLE_GOT_NOTHING:
         S3FS_PRN_ERR("### CURLE_GOT_NOTHING");
         sleep(4);
-        break; 
+        break;
 
       case CURLE_ABORTED_BY_CALLBACK:
         S3FS_PRN_ERR("### CURLE_ABORTED_BY_CALLBACK");
         sleep(4);
         S3fsCurl::curl_times[hCurl] = time(0);
-        break; 
+        break;
 
       case CURLE_PARTIAL_FILE:
         S3FS_PRN_ERR("### CURLE_PARTIAL_FILE");
         sleep(4);
-        break; 
+        break;
 
       case CURLE_SEND_ERROR:
         S3FS_PRN_ERR("### CURLE_SEND_ERROR");
@@ -1877,7 +1878,7 @@ int S3fsCurl::RequestPerform(void)
         }
         S3FS_PRN_INFO3("HTTP response code =%ld", LastResponseCode);
 
-        // Let's try to retrieve the 
+        // Let's try to retrieve the
         if(404 == LastResponseCode){
           return -ENOENT;
         }
@@ -2899,7 +2900,7 @@ int S3fsCurl::CompleteMultipartPostRequest(const char* tpath, string& upload_id,
     postContent += "  <PartNumber>" + str(cnt + 1) + "</PartNumber>\n";
     postContent += "  <ETag>\""     + parts[cnt]   + "\"</ETag>\n";
     postContent += "</Part>\n";
-  }  
+  }
   postContent += "</CompleteMultipartUpload>\n";
 
   // set postdata
@@ -3485,12 +3486,12 @@ int S3fsCurl::MultipartRenameRequest(const char* from, const char* to, headers_t
 }
 
 //-------------------------------------------------------------------
-// Class S3fsMultiCurl 
+// Class S3fsMultiCurl
 //-------------------------------------------------------------------
 #define MAX_MULTI_HEADREQ   20   // default: max request count in readdir curl_multi.
 
 //-------------------------------------------------------------------
-// Class method for S3fsMultiCurl 
+// Class method for S3fsMultiCurl
 //-------------------------------------------------------------------
 int S3fsMultiCurl::max_multireq = MAX_MULTI_HEADREQ;
 
@@ -3502,7 +3503,7 @@ int S3fsMultiCurl::SetMaxMultiRequest(int max)
 }
 
 //-------------------------------------------------------------------
-// method for S3fsMultiCurl 
+// method for S3fsMultiCurl
 //-------------------------------------------------------------------
 S3fsMultiCurl::S3fsMultiCurl() : hMulti(NULL), SuccessCallback(NULL), RetryCallback(NULL)
 {
@@ -3551,14 +3552,14 @@ S3fsMultiSuccessCallback S3fsMultiCurl::SetSuccessCallback(S3fsMultiSuccessCallb
   SuccessCallback = function;
   return old;
 }
-  
+
 S3fsMultiRetryCallback S3fsMultiCurl::SetRetryCallback(S3fsMultiRetryCallback function)
 {
   S3fsMultiRetryCallback old = RetryCallback;
   RetryCallback = function;
   return old;
 }
-  
+
 bool S3fsMultiCurl::SetS3fsCurlObject(S3fsCurl* s3fscurl)
 {
   if(hMulti){

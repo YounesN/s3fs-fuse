@@ -4902,7 +4902,7 @@ int main(int argc, char* argv[])
     S3FS_PRN_EXIT("passphrase did not match.");
     exit(EXIT_FAILURE);
   }
-  s3fscurl::SetRC4PassPhrase(first_key);
+  S3fsCurl::SetRC4PassPhrase(first_key);
 
   // now passing things off to fuse, fuse will finish evaluating the command line args
   fuse_res = fuse_main(custom_args.argc, custom_args.argv, &s3fs_oper, NULL);
