@@ -45,6 +45,7 @@
 #include "s3fs_util.h"
 #include "string_util.h"
 #include "curl.h"
+#include <openssl/rc4.h>
 
 using namespace std;
 
@@ -923,7 +924,7 @@ bool FdEntity::GetStats(struct stat& st)
   }
   AutoLock auto_lock(&fdent_lock);
 
-  memset(&st, 0, sizeof(struct stat)); 
+  memset(&st, 0, sizeof(struct stat));
   if(-1 == fstat(fd, &st)){
     S3FS_PRN_ERR("fstat failed. errno(%d)", errno);
     return false;
@@ -1050,6 +1051,11 @@ int FdEntity::Load(off_t start, size_t size)
 
   int result = 0;
 
+  // initializing key for encryption
+  std::string passphrase;
+  passphrase = s3fscurl::GetRC4PassPhrase();
+  RC4::s3sf_init_key((unsigned char *) passphrase.c_str());
+
   // check loaded area & load
   fdpage_list_t unloaded_list;
   if(0 < pagelist.GetUnloadedPages(unloaded_list, start, size)){
@@ -1100,6 +1106,8 @@ int FdEntity::Load(off_t start, size_t size)
         // set modify flag
         is_modify = false;
       }
+
+      RC4::s3fs_decrypt_rc4(fd);
 
       // Set loaded flag
       pagelist.SetPageLoadedStatus((*iter)->offset, static_cast<off_t>((*iter)->bytes), true);
@@ -1354,6 +1362,8 @@ int FdEntity::RowFlush(const char* tpath, bool force_sync)
     return 0;
   }
 
+  RC4::s3fs_encrypt_rc4(fd);
+
   // If there is no loading all of the area, loading all area.
   size_t restsize = pagelist.GetTotalUnloadedPageSize();
   if(0 < restsize){
@@ -1384,16 +1394,16 @@ int FdEntity::RowFlush(const char* tpath, bool force_sync)
 
     /*
      * Make decision to do multi upload (or not) based upon file size
-     * 
+     *
      * According to the AWS spec:
      *  - 1 to 10,000 parts are allowed
      *  - minimum size of parts is 5MB (expect for the last part)
-     * 
+     *
      * For our application, we will define minimum part size to be 10MB (10 * 2^20 Bytes)
-     * minimum file size will be 64 GB - 2 ** 36 
-     * 
+     * minimum file size will be 64 GB - 2 ** 36
+     *
      * Initially uploads will be done serially
-     * 
+     *
      * If file is > 20MB, then multipart will kick in
      */
     if(pagelist.Size() > static_cast<size_t>(MAX_MULTIPART_CNT * S3fsCurl::GetMultipartSize())){
@@ -1421,6 +1431,8 @@ int FdEntity::RowFlush(const char* tpath, bool force_sync)
       S3fsCurl s3fscurl(true);
       result = s3fscurl.PutRequest(tpath ? tpath : path.c_str(), orgmeta, fd);
     }
+
+    RC4::s3fs_decrypt_rc4(fd);
 
     // seek to head of file.
     if(0 == result && 0 != lseek(fd, 0, SEEK_SET)){

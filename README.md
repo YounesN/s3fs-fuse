@@ -1,5 +1,8 @@
-s3fs
+s3fs-rc4
+
+s3fs-rc4 is a fork of S3FS-Fuse. It's a FUSE(File System in User Space) based solution to mount/unmount an amazon S3 storage buckets and use system commands with S3 just like it was another Hard Disk. All files are encrypted using RC4 on upload and decrypted on download. (Note: You will be asked to provide a phrase key on the mount which if you forget you will all the information used by this key.)
 ====
+s3fs-fuse
 
 s3fs allows Linux and Mac OS X to mount an S3 bucket via FUSE.
 s3fs preserves the native object format for files, allowing use of other tools like [s3cmd](http://s3tools.org/s3cmd).

@@ -29,12 +29,12 @@
 //----------------------------------------------
 // class BodyData
 //----------------------------------------------
-// memory class for curl write memory callback 
+// memory class for curl write memory callback
 //
 class BodyData
 {
   private:
-    char* text;    
+    char* text;
     size_t lastpos;
     size_t bufsize;
 
@@ -152,7 +152,7 @@ enum sse_type_t {
 //
 class S3fsCurl
 {
-    friend class S3fsMultiCurl;  
+    friend class S3fsMultiCurl;
 
   private:
     enum REQTYPE {
@@ -205,6 +205,7 @@ class S3fsCurl
     static int              max_parallel_cnt;
     static off_t            multipart_size;
     static bool             is_sigv4;
+    static std::string      rc4_passphrase;
 
     // variables
     CURL*                hCurl;
@@ -311,6 +312,8 @@ class S3fsCurl
     static bool IsSseS3Type(void) { return (SSE_S3 == S3fsCurl::ssetype); }
     static bool IsSseCType(void) { return (SSE_C == S3fsCurl::ssetype); }
     static bool IsSseKmsType(void) { return (SSE_KMS == S3fsCurl::ssetype); }
+    static std::string GetRC4PassPhrase(void) { return rc4_passphrase; }
+    static void SetRC4PassPhrase(std::string key) { rc4_passphrase = key; }
     static bool FinalCheckSse(void);
     static bool SetSseCKeys(const char* filepath);
     static bool SetSseKmsid(const char* kmsid);

@@ -19,6 +19,8 @@
 ######################################################################
 dnl Process this file with autoconf to produce a configure script.
 
+DEPS_LIBS = "$DEPS_LIBS -lcrypto"
+
 AC_PREREQ(2.59)
 AC_INIT(s3fs, 1.79)
 AC_CONFIG_HEADER([config.h])
@@ -229,7 +231,7 @@ dnl malloc_trim function
 AC_CHECK_FUNCS([malloc_trim])
 
 dnl clock_gettime function(osx)
-AC_SEARCH_LIBS([clock_gettime],[rt posix4]) 
+AC_SEARCH_LIBS([clock_gettime],[rt posix4])
 AC_CHECK_FUNCS([clock_gettime])
 
 dnl ----------------------------------------------
@@ -286,4 +288,3 @@ AC_OUTPUT
 dnl ----------------------------------------------
 dnl end configuration
 dnl ----------------------------------------------
-
