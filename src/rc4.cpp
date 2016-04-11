@@ -53,7 +53,7 @@ int RC4Encryption::s3fs_encrypt_rc4(int fd)
 
 int RC4Encryption::s3fs_init_key(unsigned char *key)
 {
-  key_length = (int) strlen((char *)key_data);
+  key_length = (int) strlen((char *)key);
   key_data = (unsigned char *) calloc(key_length, sizeof(char));
   strcpy((char *)key_data, (char *)key);
 
