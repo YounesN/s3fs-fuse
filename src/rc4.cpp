@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <openssl/rc4.h>
 #include "rc4.h"
-#include "zlib.h"
+#include <zlib.h>
 
 using namespace std;
 
@@ -28,7 +28,23 @@ int RC4Encryption::s3fs_decrypt_rc4(int fd)
   fcompr = (unsigned char *) calloc(flencompr, sizeof(char));
   pread(fd, fciphr, flencompr, 0);
   RC4(&key, flencompr, fciphr, fcompr);
-  uncompress(fplain, (uLongf*)&flength, fcompr, flencompr);
+
+  z_stream infstream;
+  infstream.zalloc = Z_NULL;
+  infstream.zfree = Z_NULL;
+  infstream.opaque = Z_NULL;
+  // setup "fcompr" as the input and "fplain" as the compressed output
+  infstream.avail_in = flencompr; // size of input
+  infstream.next_in = (Bytef *)fcompr; // input char array
+  infstream.avail_out = (uInt)flencompr * 2; // size of output
+  infstream.next_out = (Bytef *)fplain; // output char array
+
+  // the actual DE-compression work.
+  inflateInit(&infstream);
+  inflate(&infstream, Z_NO_FLUSH);
+  inflateEnd(&infstream);
+  flength = infstream.total_out;
+
   pwrite(fd, fplain, flength, 0);
   ftruncate(fd, flength);
 
@@ -51,7 +67,23 @@ int RC4Encryption::s3fs_encrypt_rc4(int fd)
   fciphr = (unsigned char *) calloc(flength, sizeof(char));
   fcompr = (unsigned char *) calloc(flength, sizeof(char));
   pread(fd, fplain, flength, 0);
-  compress(fcompr, (uLongf*)&flencompr, fplain, flength);
+
+  // zlib struct
+  z_stream defstream;
+  defstream.zalloc = Z_NULL;
+  defstream.zfree = Z_NULL;
+  defstream.opaque = Z_NULL;
+  // setup "fplain" as the input and "fcompr" as the compressed output
+  defstream.avail_in = flength; // size of input, string + terminator
+  defstream.next_in = (Bytef *)fplain; // input char array
+  defstream.avail_out = (uInt)flength; // size of output
+  defstream.next_out = (Bytef *)fcompr; // output char array
+  // the actual compression work.
+  deflateInit(&defstream, Z_BEST_COMPRESSION);
+  deflate(&defstream, Z_FINISH);
+  deflateEnd(&defstream);
+  flencompr = defstream.total_out;
+
   RC4(&key, flencompr, fcompr, fciphr);
   pwrite(fd, fciphr, flencompr, 0);
   ftruncate(fd, flencompr);
