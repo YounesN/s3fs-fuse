@@ -19,7 +19,7 @@
 ######################################################################
 dnl Process this file with autoconf to produce a configure script.
 
-DEPS_LIBS = "$DEPS_LIBS -lcrypto"
+DEPS_LIBS = "$DEPS_LIBS -lz -lcrypto"
 
 AC_PREREQ(2.59)
 AC_INIT(s3fs, 1.79)
